@@ -32,17 +32,46 @@ for asset in assets:
 # Define lambda using user-specified risk
 # Scale λ so that higher user_risk increases weight on variance
 # Annualized mean return and annualized volatility of all assets
-avg_return = mu.mean()
-avg_vol = np.sqrt(np.mean(np.diag(cov_matrix)))  # std dev, not variance
+# avg_return = mu.mean()
+# avg_vol = np.sqrt(np.mean(np.diag(cov_matrix)))  # std dev, not variance
+#
+# # Lambda: scale ratio of risk to return
+# lam = user_risk * (avg_return / avg_vol)
+# lam = user_risk * (avg_return / avg_vol)
+# lam = user_risk * (np.max(cov_matrix.values) / np.mean(mu.values))
 
-# Lambda: scale ratio of risk to return
-lam = user_risk * (avg_return / avg_vol)
+# -------------------------------
+# Define lambda (risk appetite scaling)
+# -------------------------------
+
+avg_return = mu.mean()
+avg_vol = np.sqrt(np.mean(np.diag(cov_matrix)))  # portfolio average volatility
+
+# Invert lambda: low user_risk → high penalty on variance, high user_risk → low penalty
+# Added non-linear scaling for better spread
+# Scale factor to give more weight to return when user selects higher risk
+# Map user risk (0-1) to lambda (0.1 – 10) non-linearly
+lam_min, lam_max = 0.1, 10
+lam = lam_min + (1 - user_risk)**2 * (lam_max - lam_min)
+
+# multiply by factor 10 to amplify impact
+print(f"Lambda scaling factor: {lam:.4f}")
+
+
  # scaling factor 10 to adjust impact
 
 # Objective: Minimize variance - lambda * return
 linear = {assets[i]: -mu.iloc[i] for i in range(n)}
 quadratic = {(assets[i], assets[j]): lam * cov_matrix.iloc[i, j] for i in range(n) for j in range(n)}
-qp.minimize(linear=linear, quadratic=quadratic)
+avg_vol = np.sqrt(np.mean(np.diag(cov_matrix)))
+norm_factor = lam / avg_vol  # normalize return by volatility
+
+# Step 3: scale linear part by normalized factor
+linear_scaled = {asset: val * norm_factor for asset, val in linear.items()}
+
+# Step 4: scale quadratic part by lambda
+quadratic_scaled = {key: val * lam for key, val in quadratic.items()}
+qp.minimize(linear=linear_scaled, quadratic=quadratic_scaled)
 
 # Constraint: select exactly k assets
 qp.linear_constraint(linear={asset: 1 for asset in assets}, sense='==', rhs=k, name='pick_k_assets')
@@ -52,7 +81,7 @@ backend = Aer.get_backend('aer_simulator')
 quantum_instance = QuantumInstance(backend, seed_simulator=42, seed_transpiler=42)
 
 # Set up the QAOA algorithm
-qaoa = QAOA(optimizer=COBYLA(maxiter=200), reps=5, quantum_instance=quantum_instance)
+qaoa = QAOA(optimizer=COBYLA(maxiter=200), reps=3, quantum_instance=quantum_instance)
 
 # Solve the problem using QAOA
 optimizer = MinimumEigenOptimizer(qaoa)
@@ -85,9 +114,27 @@ weights_fractional = weights_fractional / weights_fractional.sum()
 
 print("\n=== Fractional Portfolio Allocation (%) ===")
 print((weights_fractional * 100).sort_values(ascending=False).round(2))
+# User input for risk-free rate
+# risk_free_rate_percent = float(input("Enter the risk-free rate (in %): "))
+risk_free_rate = 0.02
+
+# Sharpe ratio adjusted
+portfolio_returns = returns[selected_assets] @ weights_fractional
+
+# Step 2: downside deviation
+downside_returns = np.minimum(portfolio_returns - risk_free_rate, 0)
+downside_deviation = np.sqrt((downside_returns**2).mean())
+
+# Step 3: Sortino Ratio
 
 # Portfolio metrics
 expected_return = np.dot(weights_fractional.values, selected_mu)
 portfolio_risk = np.sqrt(weights_fractional.values @ selected_cov.values @ weights_fractional.values)
+sharpe_ratio = (expected_return - risk_free_rate) / portfolio_risk if portfolio_risk > 0 else 0
+sortino_ratio = (expected_return - risk_free_rate) / downside_deviation if downside_deviation > 0 else 0
+
+
 print(f"\nExpected Return: {expected_return:.4f}")
 print(f"Portfolio Risk (Volatility): {portfolio_risk:.4f}")
+print(f"Sharpe Ratio (Rf={risk_free_rate:.2%}): {sharpe_ratio:.4f}")
+print(f"Sortino Ratio (Rf={risk_free_rate:.2%}): {sortino_ratio:.4f}")
