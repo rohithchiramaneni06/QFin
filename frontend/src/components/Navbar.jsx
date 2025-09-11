@@ -58,6 +58,12 @@ function Navbar() {
             <Link to="/create-portfolio" className="block text-gray-300 font-medium hover:text-indigo-400 hover:bg-gray-800 px-3 py-2 rounded transition">
               Create Portfolio
             </Link>
+            <Link
+                to="/comparison"
+                className="text-gray-300 font-medium hover:text-indigo-400 transition"
+              >
+                Compare Portfolios
+              </Link>
             <Link to="/about" className="block text-gray-300 font-medium hover:text-indigo-400 hover:bg-gray-800 px-3 py-2 rounded transition">
               About Us
             </Link>

@@ -21,6 +21,31 @@ export const portfolioService = {
       num_assets
     }),
 
+    /**
+   * Optimize portfolio using classical method
+   * POST /portfolio/classical
+   */
+  optimizeClassicalPortfolio: (risk, amount, time, num_assets) =>
+    flaskApi.post('/portfolio/classical', {
+      risk,
+      amount,
+      time,
+      num_assets
+    }),
+
+
+    /**
+   * Compare quantum and classical portfolio optimization
+   * POST /portfolio/comparison
+   */
+  comparePortfolios: (risk, amount, time, num_assets) =>
+    flaskApi.post('/portfolio/comparison', {
+      risk,
+      amount,
+      time,
+      num_assets
+    }),
+
   /**
    * Get stock info
    * POST /portfolio/info

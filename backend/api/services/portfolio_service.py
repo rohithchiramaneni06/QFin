@@ -1,8 +1,10 @@
 from datetime import datetime
 from ..utils.portfolio_utils import fetch_data
 from ..utils.quantum_utils import build_and_solve_qubo
+from ..utils.classical_portfolio import build_and_solve_classical
 from ..utils.data_utils import get_stock_info, calculate_annual_returns, create_table_values, get_market_index_data
 from ..utils.metrics_utils import project_portfolio, unified_portfolio_metrics, monte_carlo_simulation
+from ..utils.metrics_utils import classical_model
 import pandas as pd
 import numpy as np
 
@@ -69,9 +71,9 @@ class PortfolioService:
         return get_stock_info(tickers)
 
     @staticmethod
-    def calculate_portfolio_metrics(mu, cov, user_risk, k, risk_free=0.02):
+    def calculate_portfolio_metrics(returns, mu, cov, user_risk, k, risk_free=0.02, method="quantum"):
         """
-        Optimize portfolio using quantum-inspired methods.
+        Optimize portfolio using quantum-inspired or classical methods.
 
         Args:
             mu (pd.Series): Expected returns
@@ -79,24 +81,95 @@ class PortfolioService:
             user_risk (float): Risk tolerance parameter (0–1)
             k (int): Number of assets to select
             risk_free (float): Risk-free rate
+            method (str): Optimization method ("quantum" or "classical")
 
         Returns:
             dict: Portfolio metrics
             dict: Selected weights keyed by ticker
         """
         
-        selection_vec, selected_assets = build_and_solve_qubo(mu, cov, list(mu.index), k, user_risk)
-        metrics = unified_portfolio_metrics(
-            selection_vec=selection_vec,
-            selected_assets=selected_assets,
-            mu=mu,
-            cov=cov,
-            tickers=list(mu.index),
-            user_risk=user_risk,
-            risk_free=risk_free,
-        )
+        if method == "quantum":
+            selection_vec, selected_assets = build_and_solve_qubo(mu, cov, list(mu.index), k, user_risk)
+            metrics = unified_portfolio_metrics(
+                selection_vec=selection_vec,
+                selected_assets=selected_assets,
+                mu=mu,
+                cov=cov,
+                tickers=list(mu.index),
+                user_risk=user_risk,
+                risk_free=risk_free,
+                quantum=True
+            )
+        else:  # classical
+            metrics_classic, mu_sub, cov_sub = build_and_solve_classical(returns, mu, cov, user_risk, N_ASSETS_SELECT=k)
+            metrics = classical_model(metrics_classic,mu=mu_sub,cov=cov_sub)
+        # metrics = unified_portfolio_metrics(
+        #     selection_vec=selection_vec,
+        #     selected_assets=selected_assets,
+        #     mu=mu,
+        #     cov=cov,
+        #     tickers=list(mu.index),
+        #     user_risk=user_risk,
+        #     risk_free=risk_free,
+        # )
         weights_dict = {ticker: w for ticker, w in metrics["weights"].items()}
         return metrics, weights_dict
+        
+    @staticmethod
+    def calculate_comparison_metrics(returns, mu, cov, user_risk, k, investment_amount, investment_horizon, risk_free=0.02):
+        """
+        Calculate and compare portfolio metrics using both quantum and classical methods.
+
+        Args:
+            returns (pd.DataFrame): Stock returns
+            mu (pd.Series): Expected returns
+            cov (pd.DataFrame): Covariance matrix
+            user_risk (float): Risk tolerance parameter (0–1)
+            k (int): Number of assets to select
+            risk_free (float): Risk-free rate
+
+        Returns:
+            dict: Comparison of quantum and classical portfolio metrics
+        """
+        # Calculate quantum portfolio metrics
+        quantum_metrics, quantum_weights = PortfolioService.calculate_portfolio_metrics(
+            returns, mu, cov, user_risk, k, risk_free, method="quantum"
+        )
+        quantum_portfolio_metrics = PortfolioService.get_portfolio_metrics(
+            quantum_metrics, mu, cov, user_risk, investment_amount, investment_horizon
+        )
+        
+        # Calculate classical portfolio metrics
+        classical_metrics, classical_weights = PortfolioService.calculate_portfolio_metrics(
+            returns, mu, cov, user_risk, k, risk_free, method="classical"
+        )
+        classical_portfolio_metrics = PortfolioService.get_portfolio_metrics(
+            classical_metrics, mu, cov, user_risk, investment_amount, investment_horizon
+        )
+    
+        # Prepare comparison response
+        comparison = {
+            "quantum": {
+                "selected_assets": quantum_metrics.get("selected_assets", []),
+                "weights": quantum_weights,
+                "expected_return": quantum_metrics.get("annual_expected_return", 0),
+                "volatility": quantum_metrics.get("annual_volatility", 0),
+                "sharpe_ratio": quantum_metrics.get("sharpe_ratio", 0),
+                "portfolio_beta": quantum_portfolio_metrics.get("portfolio_beta", 0),
+                "var": quantum_metrics.get("VaR_loss", 0),
+            },
+            "classical": {
+                "selected_assets": classical_metrics.get("selected_assets", []),
+                "weights": classical_weights,
+                "expected_return": classical_metrics.get("annual_expected_return", 0),
+                "volatility": classical_metrics.get("annual_volatility", 0),
+                "sharpe_ratio": classical_metrics.get("sharpe_ratio", 0),
+                "portfolio_beta": classical_portfolio_metrics.get("portfolio_beta", 0),
+                "var": classical_metrics.get("VaR_loss", 0),
+            }
+        }
+        
+        return comparison
 
     @staticmethod
     def get_portfolio_metrics(metrics, mu, cov, user_risk, investment_amount, investment_horizon):
@@ -185,3 +258,4 @@ class PortfolioService:
             DataFrame with last 100 trading days of close prices
         """
         return get_market_index_data(ticker)
+    

@@ -83,7 +83,7 @@ from  ..utils.portfolio_utils import calculate_portfolio_beta
     
 #     return target_returns.tolist(), efficient_volatilities, sharpe_ratios, efficient_weights
 
-def get_weights_from_selection(selection_vec, mu, cov, tickers, user_risk=1.0, min_weight=0.01):
+def get_weights_from_selection_quantum(selection_vec, mu, cov, tickers, user_risk=1.0, min_weight=0.01):
     """
     Optimize weights so that all selected assets get non-zero weights, Sharpe ratio is maximized,
     and portfolio volatility scales smoothly with user_risk.
@@ -143,6 +143,37 @@ def get_weights_from_selection(selection_vec, mu, cov, tickers, user_risk=1.0, m
         return None, None, None
 
     return res.x, selected_mu, cov.iloc[idx, idx]
+
+def get_weights_from_selection(selection_vec, mu, cov, tickers, user_risk=1.0):
+    """Convert QAOA selection vector into fractional weights."""
+    selection = np.array([1 if float(x) > 0 else 0 for x in selection_vec])
+    idx = np.where(selection == 1)[0].tolist()
+    if len(idx) == 0:
+        return None, None, None
+
+    selected_mu = mu.iloc[idx]
+    selected_cov = cov.iloc[idx, idx]
+    print("User risk: ", user_risk)
+    # Preliminary weights proportional to return/variance
+    weights_raw = selected_mu / np.diag(selected_cov)
+    print("Raw weights: ", weights_raw)
+    weights_fractional = weights_raw / weights_raw.sum()
+    print("Fractional weights: ", weights_fractional)
+
+    # Scale by user risk
+    port_var = weights_fractional.values @ selected_cov.values @ weights_fractional.values
+    port_vol = np.sqrt(port_var)
+    scaling_factor = user_risk / (port_vol + 1e-12)
+    print("Scaling factor: ", scaling_factor)
+    weights_fractional = weights_fractional * scaling_factor
+
+    print("raw Fractional weights: ", weights_fractional)
+    # Normalize
+    weights_fractional = weights_fractional / weights_fractional.sum()
+    print("Nomalized Fractional weights: ", weights_fractional)
+
+    return weights_fractional.values, selected_mu, selected_cov
+
 
 def compute_portfolio_stats(weights, mu, cov, risk_free=0.02):
     """
@@ -256,7 +287,8 @@ def unified_portfolio_metrics(
     horizon_days=252,
     n_sims=5000,
     alpha=0.05,
-    seed=123
+    seed=123,
+    quantum=False,
 ):
     """
     Unified function where the entire portfolio is invested in selected assets.
@@ -267,7 +299,12 @@ def unified_portfolio_metrics(
     # --------------------------------------------------
     # Step 1. Get risky portfolio weights
     # --------------------------------------------------
-    if selection_vec is not None and selected_assets is not None:
+    if selection_vec is not None and selected_assets is not None and quantum:
+        weights_risky, mu, cov = get_weights_from_selection_quantum(
+            selection_vec, mu, cov, tickers, user_risk
+        )
+        tickers_selected = selected_assets
+    elif selection_vec is not None and selected_assets is not None and not quantum:
         weights_risky, mu, cov = get_weights_from_selection(
             selection_vec, mu, cov, tickers, user_risk
         )
@@ -287,7 +324,10 @@ def unified_portfolio_metrics(
     # --------------------------------------------------
     # Step 3. Portfolio statistics
     # --------------------------------------------------
-    exp_return, vol, sharpe = compute_blended_stats(weights_risky, mu, cov,user_risk, risk_free)
+    if quantum:
+        exp_return, vol, sharpe = compute_blended_stats(weights_risky, mu, cov,user_risk, risk_free)
+    else:
+        exp_return, vol, sharpe = compute_portfolio_stats(weights_risky, mu, cov)
 
     sortino, downside_dev = None, None
     if returns is not None and tickers_selected is not None:
@@ -306,6 +346,52 @@ def unified_portfolio_metrics(
     results = {
         "selected_assets": tickers_selected,
         "weights": weights_final,
+        "annual_expected_return": exp_return,
+        "annual_volatility": vol,
+        "sharpe_ratio": sharpe,
+        "sortino_ratio": sortino,
+        "downside_deviation": downside_dev,
+        "mean_sim_return": mean_sim,
+        "std_sim_return": std_sim,
+        "VaR_return": var_ret,
+        "CVaR_return": cvar_ret,
+        "VaR_loss": -var_ret,
+        "CVaR_loss": -cvar_ret,
+        "sim_returns": sim_rets,
+    }
+
+    return results
+    
+def classical_model(
+    metrics,
+    mu=None,
+    cov=None,
+    risk_free=0.02,
+    returns=None,
+    horizon_days=252,
+    n_sims=5000,
+    alpha=0.05,
+    seed=123
+    ):
+
+    tickers_selected = metrics["selected_assets"]
+    weights_risky = list(metrics["weights"].values())
+    exp_return = metrics['expected_return']
+    vol = metrics['volatility']
+    sharpe = metrics['sharpe']
+
+    sortino, downside_dev = None, None
+    if returns is not None and tickers_selected is not None:
+        sortino, downside_dev = compute_sortino_ratio(weights_risky, returns, tickers_selected, risk_free)
+    # --------------------------------------------------
+    # Step 4. Monte Carlo simulation
+    # --------------------------------------------------
+    mean_sim, std_sim, var_ret, cvar_ret, sim_rets = monte_carlo_portfolio(
+        mu, cov, weights_risky, horizon_days, n_sims, alpha, seed
+    )
+    results = {
+        "selected_assets": tickers_selected,
+        "weights": metrics['weights'],
         "annual_expected_return": exp_return,
         "annual_volatility": vol,
         "sharpe_ratio": sharpe,

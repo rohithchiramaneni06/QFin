@@ -87,7 +87,7 @@ def optimize():
         mu, cov = PortfolioService.compute_mu_cov(returns)
 
         # Calculate portfolio metrics and optimized weights
-        metrics, weights_dict = PortfolioService.calculate_portfolio_metrics(mu, cov, risk_tolerance, k)
+        metrics, weights_dict = PortfolioService.calculate_portfolio_metrics(returns, mu, cov, risk_tolerance, k, method="quantum")
         # Compute portfolio projection (value over time)
         portfolio_metrics = PortfolioService.get_portfolio_metrics(
             metrics, mu, cov,risk_tolerance, investment_amount, investment_horizon
@@ -154,7 +154,7 @@ def simulate_portfolio():
         # Compute expected returns and covariance
         mu, cov = PortfolioService.compute_mu_cov(returns)
         # Convert weights to numpy array
-        _, weights_dict = PortfolioService.calculate_portfolio_metrics(mu, cov, risk_tolerance, k)
+        _, weights_dict = PortfolioService.calculate_portfolio_metrics(returns, mu, cov, risk_tolerance, k)
 
         # Run Monte Carlo simulation
         simulation_results = PortfolioService.get_monte_carlo_simulation(
@@ -213,4 +213,92 @@ def get_market_index():
             'data': market_index_data.to_dict(orient='records')  # now works
         })
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# -------------------------------
+# Classical Portfolio Optimization Endpoint
+# -------------------------------
+@portfolio_bp.route('/classical', methods=['POST'])
+@jwt_required()
+def classical_optimize():
+    try:
+        data = request.get_json()
+        risk_tolerance = data.get('risk')
+        investment_amount = data.get('amount')
+        investment_horizon = data.get('time')
+        k = data.get('num_assets')
+
+        if None in (risk_tolerance, investment_amount, investment_horizon, k):
+            return jsonify({'error': 'Missing required parameters: risk, amount, time, num_assets'}), 400
+
+        # Fetch cached returns and tickers
+        returns, tickers, _ = fetch_and_cache_data()
+
+        # Compute expected returns and covariance
+        mu, cov = PortfolioService.compute_mu_cov(returns)
+        # Calculate portfolio metrics and optimized weights using classical method
+        metrics, weights_dict = PortfolioService.calculate_portfolio_metrics(
+            returns, mu, cov, risk_tolerance, k, method="classical"
+        )
+        
+        # Compute portfolio projection (value over time)
+        portfolio_metrics = PortfolioService.get_portfolio_metrics(
+            metrics, mu, cov, risk_tolerance, investment_amount, investment_horizon
+        )
+
+        # Ensure all numpy/pandas objects are converted to native types for JSON
+        metrics_native = {k: float(v) if np.isscalar(v) else v for k, v in metrics.items()}
+        portfolio_metrics_native = portfolio_metrics.to_dict() if isinstance(portfolio_metrics, pd.DataFrame) else portfolio_metrics
+        weights_native = {k: float(v) for k, v in weights_dict.items()}
+        
+        response_data = {
+            'success': True,
+            'weights': weights_native,
+            'optimization_metrics': metrics_native,
+            'portfolio_projection': portfolio_metrics_native
+        }
+
+        return jsonify(response_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# -------------------------------
+# Portfolio Comparison Endpoint
+# -------------------------------
+@portfolio_bp.route('/comparison', methods=['POST'])
+@jwt_required()
+def compare_portfolios():
+    try:
+        data = request.get_json()
+        risk_tolerance = data.get('risk')
+        investment_amount = data.get('amount')
+        investment_horizon = data.get('time')
+        k = data.get('num_assets')
+
+        if None in (risk_tolerance, investment_amount, investment_horizon, k):
+            return jsonify({'error': 'Missing required parameters: risk, amount, time, num_assets'}), 400
+
+        # Fetch cached returns and tickers
+        returns, tickers, _ = fetch_and_cache_data()
+
+        # Compute expected returns and covariance
+        mu, cov = PortfolioService.compute_mu_cov(returns)
+
+        # Get comparison metrics for both quantum and classical methods
+        comparison = PortfolioService.calculate_comparison_metrics( 
+            returns, mu, cov, risk_tolerance, k, investment_amount, investment_horizon
+        )
+        
+        # Add investment details to the response
+        comparison['investment_details'] = {
+            'amount': investment_amount,
+            'horizon': investment_horizon
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': comparison
+        })
+    except Exception as e:
+        print("Error in compare_portfolios:", e)
         return jsonify({'error': str(e)}), 500
