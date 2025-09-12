@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
+import yfinance as yf
 
 # Import services
 from ..services.portfolio_service import PortfolioService
@@ -214,6 +215,43 @@ def get_market_index():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@portfolio_bp.route('/market-trends', methods=['GET'])
+def get_market_trends_endpoint():
+    try:
+        ASSETS = ["AAPL", "MSFT", "GOOGL", "AMZN", "BTC-USD", "GLD", "HYG", "META"]
+        
+        end_date = datetime.today().strftime('%Y-%m-%d')
+        start_date = (datetime.today() - timedelta(days=4)).strftime('%Y-%m-%d')
+        
+        trends = []
+        for ticker in ASSETS:
+            try:
+                stock_data = yf.download(ticker, start=start_date, end=end_date)
+                
+                if 'Close' in stock_data.columns and len(stock_data['Close']) >= 2:
+                    latest_close = float(stock_data['Close'].iloc[-1])
+                    previous_close = float(stock_data['Close'].iloc[-2])
+                    percent_change = ((latest_close - previous_close) / previous_close) * 100
+                    
+                    trends.append({
+                        "symbol": ticker,
+                        "change": f"{percent_change:.2f}%",
+                        "trend": "up" if percent_change >= 0 else "down"
+                    })
+                else:
+                    print(f"Not enough data for {ticker} or missing 'Close' column.")
+            except Exception as e:
+                print(f"Error fetching data for {ticker}: {str(e)}")
+
+        return jsonify(trends)
+    
+    except Exception as e:
+        print(f"Error in get_market_trends_endpoint: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
 # -------------------------------
 # Classical Portfolio Optimization Endpoint

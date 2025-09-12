@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: frontend
+    env: static
+    region: oregon
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    branch: main
+    repo: https://github.com/rohithchiramaneni06/QFin/tree/main/frontend
+
+  - type: web
+    name: backend
+    env: python
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    branch: main
+    repo: https://github.com/rohithchiramaneni06/QFin/tree/main/backend
+
+  - type: web
+    name: springboot
+    env: java
+    region: oregon
+    buildCommand: ./mvnw clean package
+    startCommand: ./mvnw spring-boot:run
+    branch: main
+    repo: https://github.com/rohithchiramaneni06/QFin/tree/main/springboot
+databases:
+  - name: User
+    engine: mysql
+    version: "8"
+    region: oregon
+    plan: standard

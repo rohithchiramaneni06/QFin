@@ -3,6 +3,7 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import StockDataGrid from "../components/StockDataGrid";
 import PortfolioCharts from "../components/PortfolioCharts";
+import MarketQueue from "../components/MarketQueue";
 
 // Mapping of ticker -> full company/asset name
 const ASSETS = [
@@ -47,6 +48,7 @@ function HomePage() {
   return (
     <>
       <Navbar />
+      <MarketQueue />
       <div className="min-h-screen bg-gray-950 p-6">
         
         {/* Page Title */}

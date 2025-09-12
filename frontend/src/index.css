@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* Marquee Animation */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Slow marquee with reset */
+@keyframes marquee-slow-reset {
+  0% { transform: translateX(0); }
+  95% { transform: translateX(-100%); }
+  100% { transform: translateX(0); }
+}
+
 /* Input field styling */
 .input {
   width: 100%;
