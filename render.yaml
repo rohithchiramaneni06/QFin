@@ -25,9 +25,4 @@ services:
     startCommand: ./mvnw spring-boot:run
     branch: main
     repo: https://github.com/rohithchiramaneni06/QFin/tree/main/springboot
-databases:
-  - name: User
-    engine: mysql
-    version: "8"
-    region: oregon
-    plan: standard
+
