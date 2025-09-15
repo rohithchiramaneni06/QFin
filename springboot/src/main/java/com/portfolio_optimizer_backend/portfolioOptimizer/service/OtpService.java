@@ -23,6 +23,7 @@ public class OtpService {
 
     public void sendOtpEmail(String toEmail, String otp) {
         try {
+            System.out.println("Sending OTP email to: " + otp);
             emailService.sendOtpEmail(toEmail, otp);
         } catch (IOException e) {
             System.err.println("Failed to send OTP email: " + e.getMessage());

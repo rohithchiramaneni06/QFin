@@ -26,8 +26,8 @@ const ASSETS = [
 ];
 
 function HomePage() {
-  const [selectedAsset, setSelectedAsset] = useState("GLD");   // default asset
-  const [marketIndexData, setMarketIndexData] = useState([]);  // index data
+  const [selectedAsset, setSelectedAsset] = useState("GLD");
+  const [marketIndexData, setMarketIndexData] = useState([]);
 
   useEffect(() => {
     if (!selectedAsset) return;
@@ -47,22 +47,23 @@ function HomePage() {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gray-950 p-6">
-        
+      <div className="min-h-screen bg-[#121212] text-white font-sans px-6 py-10">
+
         {/* Page Title */}
-        <h2 className="mb-6 text-center text-3xl font-bold text-indigo-400">
+        <h2 className="text-center text-3xl font-bold text-white tracking-wide mb-10">
           Live Market Overview
         </h2>
 
         {/* Asset Selector */}
-        <div className="mb-6 flex justify-center">
+        <div className="flex justify-center mb-10">
           <select
             value={selectedAsset}
             onChange={(e) => setSelectedAsset(e.target.value)}
-            className="rounded-md border border-gray-700 bg-gray-900 px-8 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="bg-[#2A2A2A] text-white border border-gray-600 rounded-lg px-6 py-3
+                       focus:outline-none focus:ring-[1px] focus:ring-gray-500 transition duration-200"
           >
             {ASSETS.map((asset) => (
-              <option key={asset.ticker} value={asset.ticker}>
+              <option key={asset.ticker} value={asset.ticker} className="bg-[#2A2A2A] text-white">
                 {asset.name}
               </option>
             ))}
@@ -70,12 +71,14 @@ function HomePage() {
         </div>
 
         {/* Market Index Chart */}
-        <div className="mx-auto max-w-6xl mt-10">
-          <PortfolioCharts marketIndexData={marketIndexData} />
-        </div>
+        {marketIndexData.length > 0 && (
+          <div className="mx-auto max-w-6xl bg-[#1A1A1A] p-6 rounded-xl shadow-md mb-10">
+            <PortfolioCharts marketIndexData={marketIndexData} />
+          </div>
+        )}
 
         {/* Stock Data Table */}
-        <div className="mx-auto max-w-6xl mt-10">
+        <div className="mx-auto max-w-6xl bg-[#1A1A1A] p-6 rounded-xl shadow-md">
           <StockDataGrid />
         </div>
       </div>

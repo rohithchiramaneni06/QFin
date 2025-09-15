@@ -117,17 +117,19 @@ function CreatePortfolio() {
   return (
     <>
       <Navbar />
-      <div className="bg-black min-h-screen p-6 flex justify-center items-center">
-        <div className="max-w-lg w-full bg-gray-900 p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold text-indigo-400 mb-6 text-center">
+      <div className="bg-[#121212] min-h-screen text-white font-sans flex items-center justify-center px-6 py-10">
+        <div className="max-w-lg w-full bg-[#1A1A1A] p-8 rounded-xl shadow-md transition-all duration-300 space-y-6">
+          <h2 className="text-3xl font-bold text-center text-white tracking-wide">
             Create Portfolio
           </h2>
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="number"
               placeholder="No. of Stocks"
-              className="w-full px-4 py-2 border border-gray-700 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                         border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                         transition duration-200"
               value={form.numStocks}
               onChange={e => setForm({ ...form, numStocks: e.target.value })}
             />
@@ -138,14 +140,18 @@ function CreatePortfolio() {
               min="0"
               max="100"
               value={form.risk}
-              className="w-full px-4 py-2 border border-gray-700 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                         border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                         transition duration-200"
               onChange={e => setForm({ ...form, risk: Number(e.target.value) })}
             />
 
             <input
               type="number"
               placeholder="Tenure (Years)"
-              className="w-full px-4 py-2 border border-gray-700 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                         border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                         transition duration-200"
               value={form.tenure}
               onChange={e => setForm({ ...form, tenure: e.target.value })}
             />
@@ -153,16 +159,22 @@ function CreatePortfolio() {
             <input
               type="number"
               placeholder="Investment Amount"
-              className="w-full px-4 py-2 border border-gray-700 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                         border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                         transition duration-200"
               value={form.amount}
               onChange={e => setForm({ ...form, amount: e.target.value })}
             />
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p className="text-[#EF4444] text-sm text-center animate-pulse">{error}</p>}
 
             <button
               type="submit"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition"
+              className={`w-full py-3 rounded-lg font-semibold transition duration-300 ${
+                loading
+                  ? 'bg-gray-500 cursor-not-allowed'
+                  : 'bg-[#1CA65D] hover:bg-[#178e4b] text-white'
+              }`}
               disabled={loading}
             >
               {loading ? 'Optimizing...' : 'Optimize Portfolio'}

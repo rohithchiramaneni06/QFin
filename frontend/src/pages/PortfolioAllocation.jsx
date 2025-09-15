@@ -164,16 +164,16 @@ function PortfolioAllocation() {
   return (
     <>
       <Navbar />
-      <div className="bg-black min-h-screen p-6 text-gray-200">
-        <div className="max-w-6xl mx-auto space-y-6">
+      <div className="bg-[#121212] min-h-screen p-6 text-white font-sans">
+        <div className="max-w-6xl mx-auto space-y-8">
 
-          <h1 className="text-3xl font-bold text-center mb-6 text-indigo-400">
+          <h1 className="text-3xl font-bold text-center mb-6 text-white tracking-wide">
             Portfolio Optimization Dashboard
           </h1>
 
           {/* Risk Slider */}
-          <div className="bg-gray-900 p-4 rounded-lg shadow">
-            <label className="block font-medium mb-2 text-gray-300">
+          <div className="bg-[#1A1A1A] p-6 rounded-xl shadow-md space-y-4">
+            <label className="block font-medium text-gray-300">
               Risk Level: {risk}%
             </label>
             <input
@@ -182,7 +182,7 @@ function PortfolioAllocation() {
               max="100"
               value={risk}
               onChange={(e) => setRisk(Number(e.target.value))}
-              className="w-full mb-2 accent-indigo-500"
+              className="w-full accent-[#1CA65D]"
             />
             <div className="flex justify-between text-sm text-gray-400">
               <span>Conservative</span>
@@ -193,17 +193,17 @@ function PortfolioAllocation() {
 
           {loading && (
             <div className="text-center text-gray-400 py-4">
-              Loading...
+              Processing...
             </div>
           )}
 
           {/* Portfolio Metrics */}
           {!loading && (
-            <div className="bg-gray-900 p-6 rounded-xl shadow-md">
-              <h3 className="text-xl font-semibold mb-6 text-indigo-400">
+            <div className="bg-[#1A1A1A] p-6 rounded-xl shadow-md">
+              <h3 className="text-xl font-semibold mb-6 text-[#1CA65D]">
                 Portfolio Metrics
               </h3>
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[
                   { label: "Investment Amount", value: metrics.totalInvestment },
                   { label: "Tenure", value: metrics.tenure },
@@ -215,9 +215,9 @@ function PortfolioAllocation() {
                   { label: "Beta", value: metrics.portfolio_beta },
                   { label: "Expected ROI", value: `+${(metrics.roi * 100).toFixed(2)}%` },
                 ].map((m, i) => (
-                  <div key={i} className="p-6 rounded-xl shadow bg-gray-800 text-center">
-                    <p className="text-lg font-medium text-gray-300">{m.label}</p>
-                    <h3 className="text-2xl font-bold text-indigo-400">{m.value}</h3>
+                  <div key={i} className="p-6 rounded-xl bg-[#2A2A2A] text-center border border-gray-600">
+                    <p className="text-sm text-gray-400">{m.label}</p>
+                    <h3 className="text-xl font-bold text-[#1CA65D]">{m.value}</h3>
                   </div>
                 ))}
               </div>
@@ -233,14 +233,14 @@ function PortfolioAllocation() {
 
           {/* Stock Allocation Table */}
           {!loading && tableData && tableData.length > 0 && (
-            <div className="bg-gray-900 p-6 rounded-xl shadow-md">
-              <h3 className="text-xl font-semibold mb-6 text-indigo-400">
+            <div className="bg-[#1A1A1A] p-6 rounded-xl shadow-md">
+              <h3 className="text-xl font-semibold mb-6 text-[#1CA65D]">
                 Stock Allocation Details
               </h3>
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
-                    <tr className="bg-gray-800 text-indigo-300 text-left text-sm uppercase tracking-wider">
+                    <tr className="bg-[#2A2A2A] text-[#1CA65D] text-left text-xs uppercase tracking-wider">
                       <th className="px-6 py-3 border-b border-gray-700">Company</th>
                       <th className="px-6 py-3 border-b border-gray-700">Market Cap</th>
                       <th className="px-6 py-3 border-b border-gray-700">Expected Returns</th>
@@ -255,10 +255,10 @@ function PortfolioAllocation() {
                     {tableData.map((a, idx) => (
                       <tr
                         key={idx}
-                        className={`${idx % 2 === 0 ? "bg-gray-900" : "bg-gray-800"
-                          } hover:bg-gray-700 transition`}
+                        className={`${idx % 2 === 0 ? "bg-[#1A1A1A]" : "bg-[#2A2A2A]"
+                          } hover:bg-[#333333] transition`}
                       >
-                        <td className="px-6 py-3 border-b border-gray-700 font-medium text-gray-200">
+                        <td className="px-6 py-3 border-b border-gray-700 font-medium text-white">
                           {a.Company}
                         </td>
                         <td className="px-6 py-3 border-b border-gray-700 text-gray-400">
@@ -270,10 +270,10 @@ function PortfolioAllocation() {
                                 ? `$${(a.Market_Cap / 1e6).toFixed(2)}M`
                                 : `$${a.Market_Cap.toFixed(0)}`}
                         </td>
-                        <td className="px-6 py-3 border-b border-gray-700 text-green-400 font-medium">
+                        <td className="px-6 py-3 border-b border-gray-700 text-[#1CA65D] font-medium">
                           {a.Returns.toFixed(2)}%
                         </td>
-                        <td className="px-6 py-3 border-b border-gray-700 text-red-400">
+                        <td className="px-6 py-3 border-b border-gray-700 text-[#EF4444]">
                           {a.Volatility.toFixed(2)}%
                         </td>
                         <td className="px-6 py-3 border-b border-gray-700 text-gray-300">
@@ -302,12 +302,12 @@ function PortfolioAllocation() {
           )}
 
           {!loading && (
-            <div className=" flex flex-row justify-between mt-4">
+            <div className="flex flex-row justify-between mt-4">
               {/* Back Button */}
               <div className="text-left">
                 <button
                   onClick={() => navigate('/')}
-                  className="left-20 bg-indigo-600 text-white px-6 py-3 rounded hover:bg-indigo-700 transition shadow-lg"
+                  className="bg-[#1CA65D] hover:bg-[#178e4b] text-white px-6 py-3 rounded-lg transition shadow-md"
                 >
                   Back to Create Portfolio
                 </button>
@@ -317,7 +317,7 @@ function PortfolioAllocation() {
               <div className="text-right">
                 <button
                   onClick={exportPDF}
-                  className="right-20 bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition shadow-lg"
+                  className="bg-[#2D4733] hover:bg-[#1f3a2a] text-white px-6 py-3 rounded-lg transition shadow-md"
                 >
                   Export as PDF
                 </button>
@@ -330,5 +330,4 @@ function PortfolioAllocation() {
     </>
   );
 }
-
 export default PortfolioAllocation;

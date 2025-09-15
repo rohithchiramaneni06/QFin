@@ -12,10 +12,9 @@ function RegisterPage() {
     password: '',
     confirmPassword: ''
   });
-  
+
   const [showOtpField, setShowOtpField] = useState(false);
   const [otp, setOtp] = useState('');
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -24,12 +23,8 @@ function RegisterPage() {
     e.preventDefault();
     setError('');
 
-    // If OTP field is shown, verify OTP
-    if (showOtpField) {
-      return handleVerifyOtp();
-    }
+    if (showOtpField) return handleVerifyOtp();
 
-    // ✅ Basic validation
     const requiredFields = ['name', 'email', 'password', 'confirmPassword'];
     for (let field of requiredFields) {
       if (!form[field]) {
@@ -43,7 +38,6 @@ function RegisterPage() {
       return;
     }
 
-    // ✅ Prepare payload (adjust keys to match backend)
     const payload = {
       username: form.name,
       email: form.email,
@@ -79,8 +73,6 @@ function RegisterPage() {
     setLoading(true);
     try {
       const response = await authService.verifyOtp(form.name, otp);
-      
-      // If we got a token, user is verified and logged in
       if (response.token) {
         alert('Registration successful! You are now logged in.');
         navigate('/');
@@ -101,12 +93,12 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f0f4f8] via-[#e2ecf3] to-[#d6e4f0]">
+    <div className="min-h-screen bg-[#121212] text-white font-sans flex items-center justify-center px-6">
       <form
         onSubmit={handleRegister}
-        className="bg-white p-10 rounded-xl shadow-lg w-full max-w-md transition-all duration-300"
+        className="w-full max-w-md bg-[#1A1A1A] p-8 rounded-xl shadow-md transition-all duration-300 space-y-4"
       >
-        <h2 className="text-3xl font-bold mb-6 text-center text-[#1e3a8a]">
+        <h2 className="text-3xl font-bold text-center text-white tracking-wide mb-4">
           Create Your QFIN Account
         </h2>
 
@@ -114,14 +106,18 @@ function RegisterPage() {
           type="text"
           placeholder="Full Name"
           value={form.name}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4"
+          className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                     border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                     transition duration-200"
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
         <input
           type="date"
           value={form.dob}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4"
+          className="w-full px-4 py-3 bg-[#2A2A2A] text-white
+                     border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                     transition duration-200"
           onChange={(e) => setForm({ ...form, dob: e.target.value })}
         />
 
@@ -129,7 +125,9 @@ function RegisterPage() {
           type="tel"
           placeholder="Phone Number"
           value={form.phone}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4"
+          className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                     border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                     transition duration-200"
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
         />
 
@@ -137,7 +135,9 @@ function RegisterPage() {
           type="email"
           placeholder="Email"
           value={form.email}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4"
+          className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                     border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                     transition duration-200"
           onChange={(e) => setForm({ ...form, email: e.target.value })}
         />
 
@@ -145,7 +145,9 @@ function RegisterPage() {
           type="password"
           placeholder="Password"
           value={form.password}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4"
+          className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                     border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                     transition duration-200"
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
 
@@ -153,10 +155,10 @@ function RegisterPage() {
           type="password"
           placeholder="Confirm Password"
           value={form.confirmPassword}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4"
-          onChange={(e) =>
-            setForm({ ...form, confirmPassword: e.target.value })
-          }
+          className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                     border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                     transition duration-200"
+          onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
         />
 
         {showOtpField && (
@@ -164,25 +166,37 @@ function RegisterPage() {
             type="text"
             placeholder="Enter OTP sent to your email"
             value={otp}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4"
+            className="w-full px-4 py-3 bg-[#2A2A2A] text-white placeholder-gray-400
+                       border border-gray-600 rounded-lg focus:outline-none focus:ring-[1px] focus:ring-gray-500
+                       transition duration-200"
             onChange={(e) => setOtp(e.target.value)}
           />
         )}
 
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {error && (
+          <p className="text-[#EF4444] text-sm text-center animate-pulse">{error}</p>
+        )}
 
         <button
           type="submit"
-          className="w-full bg-[#1e3a8a] text-white py-2 rounded-md hover:bg-[#1c2f6e] transition duration-300"
+          className={`w-full py-3 rounded-lg font-semibold transition duration-300 ${
+            loading
+              ? 'bg-gray-500 cursor-not-allowed'
+              : 'bg-[#1CA65D] hover:bg-[#178e4b] text-white'
+          }`}
           disabled={loading}
         >
           {loading ? 'Processing...' : showOtpField ? 'Verify OTP' : 'Register'}
         </button>
-        
+
         {showOtpField && (
           <button
             type="button"
-            className="w-full mt-2 bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 transition duration-300"
+            className={`w-full py-3 rounded-lg font-semibold transition duration-300 ${
+              loading
+                ? 'bg-gray-500 cursor-not-allowed'
+                : 'bg-[#2D4733] hover:bg-[#1f3a2a] text-white'
+            }`}
             onClick={async () => {
               try {
                 setLoading(true);
@@ -200,9 +214,9 @@ function RegisterPage() {
           </button>
         )}
 
-        <p className="text-sm mt-4 text-center text-gray-600">
+        <p className="text-sm text-center text-gray-400 mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="text-[#1e3a8a] font-semibold hover:underline">
+          <Link to="/login" className="text-[#1CA65D] font-semibold hover:underline transition duration-200">
             Login
           </Link>
         </p>

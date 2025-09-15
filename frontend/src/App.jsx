@@ -8,14 +8,15 @@ import AboutUs from './pages/AboutUs';
 import ContactUs from './pages/ContactUs';
 import ProtectedRoute from './components/ProtectedRoute';
 import AuthTest from './components/AuthTest';
+import LandingPage from './pages/LandingPage';
 
 function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/create-portfolio" element={<ProtectedRoute><CreatePortfolio /></ProtectedRoute>} />
         <Route path="/portfolio-allocation" element={<ProtectedRoute><PortfolioAllocation /></ProtectedRoute>} />
