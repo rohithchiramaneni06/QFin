@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import time
 
 # Core portfolio optimization functions
+# Updated
 def fetch_data(tickers, start='2018-01-01', end=None, seed=42):
     """
     Fetch stock data from Yahoo Finance

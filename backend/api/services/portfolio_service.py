@@ -1,21 +1,45 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from ..utils.portfolio_utils import fetch_data
 from ..utils.quantum_utils import build_and_solve_qubo
 from ..utils.classical_portfolio import build_and_solve_classical
 from ..utils.data_utils import get_stock_info, calculate_annual_returns, create_table_values, get_market_index_data
 from ..utils.metrics_utils import project_portfolio, unified_portfolio_metrics, monte_carlo_simulation
+from ..utils.sentiment import aggregate_sentiment_for_tickers
 from ..utils.metrics_utils import classical_model
 import pandas as pd
 import numpy as np
+import joblib
+# from ..utils.config import PKL_FILE
 
+ALPHA = 0.001
+SENTIMENT = None
+NEWS = None
 
 class PortfolioService:
     """
     Service for portfolio operations
     """
-
     @staticmethod
-    def fetch_stock_data():
+    def get_tickers():
+        """
+        Get list of tickers.
+
+        Returns:
+            list: List of tickers
+        """
+        ASSETS = [
+            "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META",
+            # "JNJ", "KO", "JPM", "BRK-B", "ORCL", "GE",  # Equities
+            "IEF", "HYG",  # Debt (Treasuries & Corporate Bonds)
+            "GLD", "IAU",  # Gold ETFs
+            "BTC-USD"      # Bitcoin (Crypto)
+        ]
+        
+        # ASSETS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'BTC-USD', 'GLD', 'HYG', 'META']
+        return ASSETS
+        
+    @staticmethod
+    def fetch_stock_data(pkl_file):
         """
         Fetch stock data for the predefined tickers.
 
@@ -23,23 +47,50 @@ class PortfolioService:
             returns (pd.DataFrame): Stock returns
             assets (list): List of stock tickers
         """
-        # ASSETS = [
-        #     "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META",
-        #     "JNJ", "KO", "JPM", "BRK-B", "ORCL", "GE",  # Equities
-        #     "IEF", "HYG",  # Debt (Treasuries & Corporate Bonds)
-        #     "GLD", "IAU",  # Gold ETFs
-        #     "BTC-USD"      # Bitcoin (Crypto)
-        # ]
         
-        ASSETS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'BTC-USD', 'GLD', 'HYG', 'META']
-        START = '2010-01-01'
-        END = datetime.today().strftime('%Y-%m-%d')
+        # ASSETS = PortfolioService.get_tickers()
+        # START = '2010-01-01'
+        # # END = datetime.today().strftime('%Y-%m-%d') 
+        # END = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
 
-        returns = fetch_data(ASSETS, start=START, end=END)
-        
+        # returns = fetch_data(ASSETS, start=START, end=END)
+
+        # Load saved data
+        data = joblib.load(pkl_file)
+
+        closing_data = {}
+
+        for asset, asset_data in data.items():
+            hist = asset_data.get("history")
+            if isinstance(hist, pd.DataFrame) and not hist.empty:
+                if "Close" in hist.columns:
+                    series = hist["Close"]
+                    closing_data[asset] = series
+
+        # Combine into one DataFrame (aligned by date)
+        returns = pd.concat(closing_data, axis=1)
+        returns = returns.interpolate(method='time', limit_direction='both', axis=0)
         # Convert columns to string for JSON serialization
+        returns = returns.pct_change().dropna()
         returns.columns = returns.columns.astype(str)
-        return returns, ASSETS
+        return returns
+
+
+    @staticmethod
+    def get_sentiment_data(tickers):
+        """
+        Get sentiment data for tickers.
+
+        Args:
+            tickers (list): List of stock tickers
+
+        Returns:
+            dict: Sentiment scores for each ticker
+        """
+        global SENTIMENT, NEWS
+        if SENTIMENT is None and NEWS is None:
+            SENTIMENT, NEWS = aggregate_sentiment_for_tickers(tickers)
+        return SENTIMENT, NEWS
 
     @staticmethod
     def compute_mu_cov(returns):
@@ -55,20 +106,30 @@ class PortfolioService:
         """
         mu = returns.mean(axis=0) * 252.0  # Annualized returns
         cov = returns.cov() * 252.0  # Annualized covariance
+
+        # Add sentiment factor
+        tickers = PortfolioService.get_tickers()
+        sentiment, _ = PortfolioService.get_sentiment_data(tickers)
+        mu_eff = mu.copy()
+        if ALPHA != 0:
+            s = pd.Series(sentiment).reindex(mu.index).fillna(0)
+            mu = mu_eff + ALPHA * s
         return mu, cov
 
     @staticmethod
-    def get_stock_information(tickers):
+    def get_stock_information(tickers, pkl_file):
         """
-        Get information about stocks.
-
+        Get basic stock information from cached pkl file.
+            
         Args:
-            tickers (list): List of stock tickers
-
+            tickers: List of stock tickers
+            pkl_file: Path to joblib .pkl file
+                    
         Returns:
-            pd.DataFrame: Stock information
+            DataFrame with stock information
         """
-        return get_stock_info(tickers)
+        return get_stock_info(tickers, pkl_file)
+
 
     @staticmethod
     def calculate_portfolio_metrics(returns, mu, cov, user_risk, k, risk_free=0.02, method="quantum"):
@@ -204,7 +265,7 @@ class PortfolioService:
         return metrics['selected_assets']
 
     @staticmethod
-    def get_monte_carlo_simulation(weights, cov, investment_amount, investment_horizon):
+    def get_monte_carlo_simulation(weights, cov, investment_amount, investment_horizon, pkl_file):
         """
         Compute portfolio projection metrics using Monte Carlo simulation.
 
@@ -219,7 +280,7 @@ class PortfolioService:
             dict: Projected portfolio performance metrics
         """
         selected_assets = list(weights.keys())
-        returns = calculate_annual_returns(selected_assets)["Annualized Return"]
+        returns = calculate_annual_returns(selected_assets, pkl_file)["Annualized Return"]
         selected_cov = cov.loc[selected_assets, selected_assets]
 
         simulation_results = monte_carlo_simulation(
@@ -232,8 +293,9 @@ class PortfolioService:
             percentiles=[5, 25, 50, 75, 95]
         )
         return simulation_results
+    
     @staticmethod
-    def get_table_data(weights, investment_amount, investment_horizon):
+    def get_table_data(pkl_file, weights, investment_amount, investment_horizon):
         """
         Get table data from metrics.
 
@@ -243,7 +305,7 @@ class PortfolioService:
         Returns:
             list: Table data
         """
-        table_data = create_table_values(weights, investment_amount, investment_horizon)
+        table_data = create_table_values(pkl_file, weights, investment_amount, investment_horizon)
         return table_data
 
     @staticmethod
@@ -257,5 +319,6 @@ class PortfolioService:
         Returns:
             DataFrame with last 100 trading days of close prices
         """
+
         return get_market_index_data(ticker)
     

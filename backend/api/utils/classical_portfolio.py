@@ -29,7 +29,7 @@ def classical_underperforming_portfolio(returns, mu_annual, cov_annual, risk_lev
     # Select assets with the worst risk-return profile
     RETURN_SCALER = 0.6
     VOL_SCALER = 0.7
-    SHARPE_BOOST = 0.9
+    SHARPE_BOOST = 1
     sharpe_ratios = mu_annual / (returns.std() * np.sqrt(252))
     CAP_STRENGTH = 0.65
     worst_sharpe = sharpe_ratios.sort_values(ascending=True)
@@ -63,7 +63,100 @@ def classical_underperforming_portfolio(returns, mu_annual, cov_annual, risk_lev
     }
 
     return metrics, mu_sub, cov_sub
+# def classical_portfolio_optimization(mu, cov, user_risk, k, tickers, risk_free=0.02):
+#     """
+#     Perform classical portfolio optimization using Mean-Variance Optimization
+    
+#     Args:
+#         mu: Expected returns (annualized)
+#         cov: Covariance matrix (annualized)
+#         user_risk: Risk tolerance parameter (0-1)
+#         k: Number of assets to select
+#         tickers: List of tickers
+#         risk_free: Risk-free rate
+        
+#     Returns:
+#         selection_vec: Binary vector indicating selected assets
+#         selected_assets: List of selected asset names
+#     """
+#     n = len(tickers)
+    
+#     # Calculate Sharpe ratio for each asset
+#     sharpe_ratios = [(mu[i] - risk_free) / np.sqrt(cov.iloc[i, i]) for i in range(n)]
+    
+#     # Select top k assets based on Sharpe ratio
+#     top_indices = np.argsort(sharpe_ratios)[-k:]
+    
+#     # Create selection vector
+#     selection_vec = np.zeros(n)
+#     selection_vec[top_indices] = 1
+    
+#     # Get selected asset names
+#     selected_assets = [tickers[i] for i in top_indices]
+    
+#     return selection_vec, selected_assets
 
+# def optimize_classical_weights(mu, cov, user_risk, selection_vec, tickers, risk_free=0.02):
+#     """
+#     Optimize weights for selected assets using classical mean-variance optimization
+    
+#     Args:
+#         mu: Expected returns
+#         cov: Covariance matrix
+#         user_risk: Risk tolerance parameter (0-1)
+#         selection_vec: Binary vector indicating selected assets
+#         tickers: List of tickers
+#         risk_free: Risk-free rate
+        
+#     Returns:
+#         weights: Optimized portfolio weights
+#     """
+#     # Get indices of selected assets
+#     selected_indices = np.where(selection_vec == 1)[0]
+    
+#     # Extract selected assets' returns and covariance
+#     selected_mu = mu.iloc[selected_indices]
+#     selected_cov = cov.iloc[selected_indices, selected_indices]
+    
+#     # Number of selected assets
+#     n_selected = len(selected_indices)
+    
+#     # Define objective function based on user risk preference
+#     # Lower user_risk means more weight on minimizing volatility
+#     # Higher user_risk means more weight on maximizing return
+#     def objective(weights):
+#         portfolio_return = np.dot(weights, selected_mu)
+#         portfolio_volatility = np.sqrt(weights @ selected_cov @ weights)
+        
+#         # Blend return and risk based on user_risk parameter
+#         # user_risk=0 focuses on minimizing volatility
+#         # user_risk=1 focuses on maximizing return
+#         return -(user_risk * portfolio_return - (1 - user_risk) * portfolio_volatility)
+    
+#     # Constraints: weights sum to 1
+#     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    
+#     # Bounds: each weight between 0 and 1
+#     bounds = tuple((0, 1) for _ in range(n_selected))
+    
+#     # Initial guess: equal weights
+#     initial_weights = np.ones(n_selected) / n_selected
+    
+#     # Optimize
+#     result = minimize(objective, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    
+#     # Check if optimization was successful
+#     if not result['success']:
+#         # Fallback to equal weights if optimization fails
+#         optimized_weights = initial_weights
+#     else:
+#         optimized_weights = result['x']
+    
+#     # Create dictionary mapping tickers to weights
+#     selected_tickers = [tickers[i] for i in selected_indices]
+#     weights_dict = {ticker: weight for ticker, weight in zip(selected_tickers, optimized_weights)}
+    
+#     return weights_dict
 
 def build_and_solve_classical(returns, mu_annual, cov_annual, risk_level, N_ASSETS_SELECT=5):
     """

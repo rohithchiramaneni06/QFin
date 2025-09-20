@@ -26,11 +26,20 @@ function PortfolioAllocation() {
     tableData: initialTableData,
   } = location.state;
 
-  const [risk, setRisk] = useState(initialRisk || 0);
+   const [risk, setRisk] = useState(initialRisk || 0);
   const [allocation, setAllocation] = useState(initialAllocation || []);
   const [metrics, setMetrics] = useState(initialMetrics || {});
   const [monteCarloData, setMonteCarloData] = useState(initialSimulationData || null);
-  const [tableData, setTableData] = useState(initialTableData || null);
+  const [tableData, setTableData] = useState(() => {
+    try {
+      return typeof initialTableData === "string"
+        ? JSON.parse(initialTableData)
+        : initialTableData || [];
+    } catch {
+      return [];
+    }
+  });
+
   const [loading, setLoading] = useState(false);
   const [numAssets] = useState(initialNumAssets || 0);
   const [amount] = useState(initialAmount || 0);
@@ -79,10 +88,9 @@ function PortfolioAllocation() {
       setTableData(tableResponse.data.data);
 
       const simulationresponse = await portfolioService.simulatePortfolio(
-        riskLevel / 100,
+        weights,
         amount,
-        time,
-        numAssets
+        time
       );
       if (simulationresponse.data.success) {
         setMonteCarloData(simulationresponse.data.data);

@@ -57,12 +57,11 @@ export const portfolioService = {
    * Simulate portfolio
    * POST /portfolio/monte-carlo
    */
-  simulatePortfolio: (risk, amount, time, num_assets) =>
+  simulatePortfolio: (weights, amount, time) =>
     flaskApi.post('/portfolio/monte-carlo', {
-      risk,
+      weights,
       amount,
-      time,
-      num_assets
+      time
     }),
     /**
      * Get table data

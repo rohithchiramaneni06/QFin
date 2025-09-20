@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from datetime import datetime, timedelta
+import joblib
+import os
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -17,17 +19,85 @@ cached_returns = None
 cached_tickers = None
 cached_stock_info = None
 
+PKL_FILE = "assets_data.pkl"
+
+def fetch_and_update_data(assets, force_refresh=False):
+    data = {}
+    global PKL_FILE
+    # Load existing joblib file if available (only if not forcing refresh)
+    if os.path.exists(PKL_FILE) and not force_refresh:
+        data = joblib.load(PKL_FILE)    
+        print("📂 Loaded existing data from joblib file.")
+    else:
+        print("♻️ Starting fresh download...")
+
+    # Ensure dict structure
+    for asset in assets:
+        if asset not in data:
+            data[asset] = {"info": None, "history": None}
+
+        ticker = yf.Ticker(asset)
+
+        # Always fetch fresh info if force_refresh
+        if data[asset]["info"] is None or force_refresh:
+            try:
+                data[asset]["info"] = ticker.info
+                print(f"ℹ️ Fetched info for {asset}")
+            except Exception as e:
+                print(f"⚠️ Could not fetch info for {asset}: {e}")
+
+        # Fetch historical data
+        start_date = (datetime.today() - timedelta(days=365*20)).strftime('%Y-%m-%d')
+
+        if data[asset]["history"] is None or force_refresh:
+            # First time download / forced refresh
+            try:
+                hist = ticker.history(start=start_date)
+                hist.columns = hist.columns.get_level_values(0)
+                if not hist.empty:
+                    hist.index = hist.index.tz_localize(None).normalize()
+                    data[asset]["history"] = hist
+                    print(f"⬇️ Downloaded {asset} full 20y history.")
+            except Exception as e:
+                print(f"⚠️ Could not fetch history for {asset}: {e}")
+        else:
+            # Incremental update
+            last_date = data[asset]["history"].index.max()
+            fetch_start = (last_date + timedelta(days=1)).strftime('%Y-%m-%d')
+            today = datetime.today().strftime('%Y-%m-%d')
+
+            if fetch_start < today:
+                try:
+
+                    new_hist = ticker.history(start=fetch_start, end=today)
+                    new_hist.columns = new_hist.columns.get_level_values(0)
+                    if not new_hist.empty:
+                        new_hist.index = new_hist.index.tz_localize(None).normalize()
+                        data[asset]["history"] = pd.concat([data[asset]["history"], new_hist])
+                        data[asset]["history"] = data[asset]["history"][~data[asset]["history"].index.duplicated(keep='last')]
+                        print(f"🔄 Updated {asset} with {len(new_hist)} new rows.")
+                except Exception as e:
+                    print(f"⚠️ Could not update history for {asset}: {e}")
+
+    # Save back to joblib file
+    joblib.dump(data, PKL_FILE)
+    print(f"✅ Data saved to {PKL_FILE}")
+
+    return data
+
+
 # -------------------------------
 # Fetch & cache stock data
 # -------------------------------
 def fetch_and_cache_data(force_refresh=False):
     """Fetch stock data once and store in global cache."""
     global cached_returns, cached_tickers, cached_stock_info
-
+    data = fetch_and_update_data(assets=PortfolioService.get_tickers())
     if cached_returns is None or cached_tickers is None or cached_stock_info is None or force_refresh:
         # Fetch live stock data
-        returns, tickers = PortfolioService.fetch_stock_data()
-        stock_info = PortfolioService.get_stock_information(tickers)
+        returns= PortfolioService.fetch_stock_data(PKL_FILE)
+        tickers = PortfolioService.get_tickers()
+        stock_info = PortfolioService.get_stock_information(tickers, PKL_FILE)
 
         cached_returns = returns
         cached_tickers = tickers
@@ -48,6 +118,7 @@ def fetch_stock_data_endpoint():
 
     try:
         returns, tickers, stock_info = fetch_and_cache_data()
+        print(type(returns), type(tickers), type(stock_info))
 
         # Convert returns to dict for JSON
         returns_dict = returns.to_dict(orient='list')  # keys are tickers, values are lists of returns
@@ -85,10 +156,12 @@ def optimize():
         returns, tickers, _ = fetch_and_cache_data()
 
         # Compute expected returns and covariance
+        print("Start Sentiment")
         mu, cov = PortfolioService.compute_mu_cov(returns)
-
+        print("End Sentiment")
         # Calculate portfolio metrics and optimized weights
         metrics, weights_dict = PortfolioService.calculate_portfolio_metrics(returns, mu, cov, risk_tolerance, k, method="quantum")
+
         # Compute portfolio projection (value over time)
         portfolio_metrics = PortfolioService.get_portfolio_metrics(
             metrics, mu, cov,risk_tolerance, investment_amount, investment_horizon
@@ -142,10 +215,9 @@ def get_stock_info():
 def simulate_portfolio():
     try:
         data = request.get_json()
-        risk_tolerance = data.get('risk')
+        weights_dict = data.get('weights')
         investment_amount = data.get('amount')
         investment_horizon = data.get('time')
-        k = data.get('num_assets')
 
         if None in (investment_amount, investment_horizon):
             return jsonify({'error': 'Missing required parameters: weights, cov, amount, time'}), 400
@@ -153,15 +225,13 @@ def simulate_portfolio():
         returns, _, _ = fetch_and_cache_data()
 
         # Compute expected returns and covariance
-        mu, cov = PortfolioService.compute_mu_cov(returns)
-        # Convert weights to numpy array
-        _, weights_dict = PortfolioService.calculate_portfolio_metrics(returns, mu, cov, risk_tolerance, k)
+        _, cov = PortfolioService.compute_mu_cov(returns)
 
         # Run Monte Carlo simulation
+        global PKL_FILE
         simulation_results = PortfolioService.get_monte_carlo_simulation(
-            weights_dict, cov, investment_amount, investment_horizon
+            weights_dict, cov, investment_amount, investment_horizon, PKL_FILE
         )
-
         return jsonify({    
             'success': True,
             'data': simulation_results
@@ -178,7 +248,8 @@ def get_table_data():
         investment_horizon = data.get('time')
         weights_dict = data.get('weights')
 
-        table_data = PortfolioService.get_table_data(weights_dict, investment_amount, investment_horizon)
+        global PKL_FILE
+        table_data = PortfolioService.get_table_data(PKL_FILE, weights_dict, investment_amount, investment_horizon)
         table_data = table_data.to_dict(orient='records')
         return jsonify({
             'success': True,
@@ -199,7 +270,7 @@ def get_stocks():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@portfolio_bp.route('/market-index', methods=['POST'])
+@portfolio_bp.route('/market-index', methods=['POST']) # Graph
 def get_market_index():
     try:
         data = request.get_json()
@@ -217,35 +288,45 @@ def get_market_index():
         return jsonify({'error': str(e)}), 500
 
 @portfolio_bp.route('/market-trends', methods=['GET'])
-def get_market_trends_endpoint():
+def get_market_trends_endpoint(pkl_file="assets_data.pkl"):
     try:
-        ASSETS = ["AAPL", "MSFT", "GOOGL", "AMZN", "BTC-USD", "GLD", "HYG", "META"]
-        
-        end_date = datetime.today().strftime('%Y-%m-%d')
-        start_date = (datetime.today() - timedelta(days=4)).strftime('%Y-%m-%d')
-        
+        ASSETS = PortfolioService.get_tickers()
+
+        # Load cached data
+        global PKL_FILE
+        data = joblib.load(PKL_FILE)
+
         trends = []
         for ticker in ASSETS:
             try:
-                stock_data = yf.download(ticker, start=start_date, end=end_date)
-                
-                if 'Close' in stock_data.columns and len(stock_data['Close']) >= 2:
-                    latest_close = float(stock_data['Close'].iloc[-1])
-                    previous_close = float(stock_data['Close'].iloc[-2])
-                    percent_change = ((latest_close - previous_close) / previous_close) * 100
-                    
-                    trends.append({
-                        "symbol": ticker,
-                        "change": f"{percent_change:.2f}%",
-                        "trend": "up" if percent_change >= 0 else "down"
-                    })
-                else:
-                    print(f"Not enough data for {ticker} or missing 'Close' column.")
+                asset_data = data.get(ticker, {})
+                hist = asset_data.get("history")
+
+                if isinstance(hist, pd.DataFrame) and not hist.empty:
+                    # flatten if MultiIndex
+                    if isinstance(hist.columns, pd.MultiIndex):
+                        hist.columns = hist.columns.get_level_values(-1)
+
+                    if "Close" in hist.columns and len(hist["Close"]) >= 2:
+                        latest_close = float(hist["Close"].iloc[-1])
+                        previous_close = float(hist["Close"].iloc[-2])
+                        percent_change = ((latest_close - previous_close) / previous_close) * 100
+
+                        trends.append({
+                            "symbol": ticker,
+                            "change": f"{percent_change:.2f}%",
+                            "trend": "up" if percent_change >= 0 else "down",
+                            "latest_close": latest_close,
+                            "previous_close": previous_close,
+                            "last_updated": str(hist.index[-1].date())
+                        })
+                    else:
+                        print(f"Not enough data for {ticker} or missing 'Close'.")
             except Exception as e:
-                print(f"Error fetching data for {ticker}: {str(e)}")
+                print(f"Error processing {ticker}: {str(e)}")
 
         return jsonify(trends)
-    
+
     except Exception as e:
         print(f"Error in get_market_trends_endpoint: {str(e)}")
         return jsonify({

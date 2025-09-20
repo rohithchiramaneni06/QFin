@@ -78,3 +78,14 @@
 .nav-link:hover {
   color: #4f46e5; /* text-indigo-600 */
 }
+
+/* Force hamburger to hide after 1125px */
+@media (min-width: 1125px) {
+  .navbar-menu {
+    display: flex !important;
+  }
+  .navbar-hamburger {
+    display: none !important;
+  }
+}
+

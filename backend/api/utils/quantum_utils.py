@@ -35,7 +35,6 @@ def build_qubo(mu, cov_matrix, user_risk, k, assets):
     # Adaptive lambda scaling: lower user_risk → higher penalty on variance
     lam_min, lam_max = 0.1, 10
     lam = lam_min + (1 - user_risk)**2 * (lam_max - lam_min)
-
     # Linear term: reward for return
     linear = {assets[i]: -mu.iloc[i] for i in range(n)}
 

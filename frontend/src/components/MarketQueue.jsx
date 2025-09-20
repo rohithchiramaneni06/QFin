@@ -57,7 +57,7 @@ const MarketQueue = () => {
   return (
     <div className="bg-gray-950 text-white py-2 px-4 overflow-hidden border-b border-gray-800">
       <div className="mx-auto max-w-6xl w-full bg-gray-950">
-        <marquee behavior="scroll" direction="left" scrollamount="5" onMouseOver={(e) => e.target.stop()} onMouseOut={(e) => e.target.start()}>
+        <marquee behavior="scroll" direction="left" scrollamount="5" onMouseOver={(e) => e.currentTarget.stop()} onMouseOut={(e) => e.currentTarget.start()}>
           {marketData.map((item, index) => (
             <span key={index} className="mx-8 inline-flex items-center">
               <span className="font-medium">{item.symbol}</span>

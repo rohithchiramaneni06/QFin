@@ -25,14 +25,14 @@ function Navbar() {
     <nav className="bg-gray-900 shadow-md px-4 py-4 flex items-center justify-between relative">
 
       {/* Logo */}
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 ">
         <img src={logo} alt="QFIN" className="h-8" />
         <span className="text-1xl font-bold text-indigo-400"><span className="text-4xl">Q</span>FIN</span>
       </div>
 
       {/* Hamburger button */}
       <button
-        className="text-gray-300 md:hidden text-2xl cursor-pointer hover:bg-gray-800 px-4 py-1 rounded"
+        className="nav-hamburger text-gray-300 md:hidden text-2xl cursor-pointer hover:bg-gray-800 px-4 py-1 rounded"
         onClick={() => setMenuOpen(!menuOpen)}
       >
         &#9776;
@@ -47,7 +47,7 @@ function Navbar() {
       )}
 
       {/* Menu Links */}
-      <div className={`absolute top-full right-4 bg-gray-900 rounded-md shadow-lg p-4 space-y-4 md:space-y-0 md:p-0 md:shadow-none md:relative md:flex md:flex-row md:items-center md:space-x-8 ${menuOpen ? 'block' : 'hidden'} md:block z-20`}>
+      <div className={` nav-menu absolute top-full right-4 bg-gray-900 rounded-md shadow-lg p-4 space-y-4 md:space-y-0 md:p-0 md:shadow-none md:relative md:flex md:flex-row md:items-center md:space-x-8 ${menuOpen ? 'block' : 'hidden'} md:block z-20`}>
 
         <Link to="/home" className="block text-gray-300 font-medium hover:text-indigo-400 hover:bg-gray-800 px-3 py-2 rounded transition">
           Home
@@ -60,7 +60,7 @@ function Navbar() {
             </Link>
             <Link
                 to="/comparison"
-                className="text-gray-300 font-medium hover:text-indigo-400 transition"
+                className="block text-gray-300 font-medium hover:text-indigo-400 hover:bg-gray-800 px-3 py-2 rounded transition"
               >
                 Compare Portfolios
               </Link>

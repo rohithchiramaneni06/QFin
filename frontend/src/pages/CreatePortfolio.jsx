@@ -68,10 +68,9 @@ function CreatePortfolio() {
       };
 
       const simulationResponse = await portfolioService.simulatePortfolio(
-        formData.risk / 100,
+        weights,
         Number(formData.amount),
-        Number(formData.tenure),
-        Number(formData.numStocks)
+        Number(formData.tenure)
       );
 
       navigate('/portfolio-allocation', {
